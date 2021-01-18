@@ -1,0 +1,7 @@
+setup.py
+inaccuracies.egg-info/PKG-INFO
+inaccuracies.egg-info/SOURCES.txt
+inaccuracies.egg-info/dependency_links.txt
+inaccuracies.egg-info/entry_points.txt
+inaccuracies.egg-info/requires.txt
+inaccuracies.egg-info/top_level.txt
