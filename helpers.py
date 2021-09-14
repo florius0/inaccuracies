@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import sympy as sp
+from sympy import log, ln
 
 
 def big_r(values):
@@ -58,7 +59,7 @@ def fmt_exp_man(val, exp_l=None, r=None):
 
 def derivatives(vals, expr, dv, mapper=sp.simplify):
     v = {k: sp.symbols(v) for k, v in vals.items()}
-    f = eval(expr, v)
+    f = eval(expr, {**v, **globals()})
     return f, [mapper(f.diff(v[x])) for x in dv]
 
 

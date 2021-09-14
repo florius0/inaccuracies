@@ -1,5 +1,7 @@
 # from sympy import *
+from operator import mul
 import pandas as pd
+from sympy.core.mul import Mul
 
 import latex as lt
 from helpers import *
@@ -76,15 +78,15 @@ def inacc_trans(fun_name=None, values_names=None, values=None, consts=None, expr
     df_f = r'\left(\Delta{%s}\ \cdot %s \right)^2'
 
     values_inaccuracies = {values_names[k]: inaccuracy(v, t)[0] for k, (v, t) in values.items()}
-    subs = dict(**values_inaccuracies, **{values_names[k]: v for k, v in consts.items()})
-    # print(subs, f.subs(subs))
-    fb = Decimal(str(f.subs(subs)))
+    subs = dict(**values_inaccuracies, **{values_names[k]: Decimal(v) for k, v in consts.items()})
+    fb = Decimal(str(f.subs(subs).evalf()))
     dsb = [Decimal(str(d.subs(subs).evalf())) for d in ds]
 
     values_inaccuracies_spread = [inaccuracy(v, t)[1] for _k, (v, t) in values.items()]
     dfb = sum(map(lambda a, b: (a * b) ** 2, dsb, values_inaccuracies_spread)).sqrt()
 
-    percent_d = dfb / fb * 100
+    
+    percent_d = dfb / fb * 100 if fb != 0 else 0
 
     cols = [
         fr'${lt.b(fun_name)} = {sp.latex(f)}$',
