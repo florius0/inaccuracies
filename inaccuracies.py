@@ -67,8 +67,6 @@ def trs(name, values_names, values, expr, rnd=None, exp=None, const=None, all=Fa
     vn = parse_dict(values_names)
     v = {k: (v.split(',')[:-1], v.split(',')[-1]) for k, v in parse_dict(values).items()}
 
-    print(v, vn, const)
-
     if all:
         for varname, (vals, t) in v.items():
             _fwd(vn[varname], ' '.join(vals), t, rnd=rnd, exp=exp)
