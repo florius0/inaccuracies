@@ -12,14 +12,15 @@ FV_COLS = ['Формула', 'Значение']
 def fwd_table1(vn, values, theta, fmt=lambda x: x):
     N = len(values)
     v = list(map(Decimal, values))
-    h = lambda v: map(fmt, v)
+    def h(v): return map(fmt, v)
     hh = fmt
     t = Decimal(theta)
     vals = [
         [lt.i(vn), *h(v), fr'\theta_{vn}={hh(t)}'],
         [lt.i(vn) + r'\uparrow', *h(sorted(v)),
          fr'{lt.i("R", i=vn)} = {lt.i(vn, i="N")} - {lt.i(vn)} = {hh(big_r(v))}'],
-        [fr'U_{{ {vn} i}}', *h(big_u(v)), '-', fr'U_{vn} = U_{{P,N}} R_{vn} = {hh(get_u(v))}']  # TODO
+        [fr'U_{{ {vn} i}}', *h(big_u(v)), '-',
+         fr'U_{vn} = U_{{P,N}} R_{vn} = {hh(get_u(v))}']  # TODO
     ]
     return pd.DataFrame([['$%s$' % x for x in v] for v in vals],
                         columns=['№', *map(lambda v: f'${v}$', range(1, N + 1)), fr'$\theta_{vn}$'])
@@ -47,12 +48,14 @@ def fwd_table2(vn, values, theta, fmt=lambda x: x, vertical=True):
     ]
     cols = [
         r'$%s = \frac{1}{N} \sum{%s}$' % (lt.b(vn), lt.i(vn)),
-        r'$S_{\bar{%s}} = \sqrt{ \frac{\sum{(%s - %s)^2}} {N(N-1)} }$' % (lt.b(vn), lt.i(vn), lt.b(vn)),
+        r'$S_{\bar{%s}} = \sqrt{ \frac{\sum{(%s - %s)^2}} {N(N-1)} }$' % (
+            lt.b(vn), lt.i(vn), lt.b(vn)),
         r'$%s = t_{P,N} S_{%s}$' % (lt.d(vn), lt.b(vn)),
         r'$R_{%s} = %s_{max} - %s_{min}$' % (vn, vn, vn),
         r'$%s = \beta_{P,N} R_{%s}$' % (lt.d(lt.i(vn, i=r'\beta')), vn),
         r'$%s$' % lt.i(r'\theta', i=vn),
-        r'$%s = \sqrt{%s ^ 2 + %s ^ 2}$' % (lt.b(lt.d(vn)), lt.d(vn), lt.i(r'\theta', i=vn)),
+        r'$%s = \sqrt{%s ^ 2 + %s ^ 2}$' % (lt.b(lt.d(vn)),
+                                            lt.d(vn), lt.i(r'\theta', i=vn)),
         r'$%s = %s \pm %s$' % (vn, lt.b(vn), lt.b(lt.d(vn)))
     ]
     cols2 = [
@@ -73,19 +76,23 @@ def fwd_table2(vn, values, theta, fmt=lambda x: x, vertical=True):
 
 def inacc_trans(fun_name=None, values_names=None, values=None, consts=None, expr='', fmt=lambda x: x, vertical=True):
     # v = {k: [Decimal(x) for x in v] for k, v in values.items()}
-    vals_n = list(filter(lambda a: a not in consts.keys(), values_names.keys()))
+    vals_n = list(
+        filter(lambda a: a not in consts.keys(), values_names.keys()))
     f, ds = derivatives(values_names, expr, vals_n)
     df_f = r'\left(\Delta{%s}\ \cdot %s \right)^2'
 
-    values_inaccuracies = {values_names[k]: inaccuracy(v, t)[0] for k, (v, t) in values.items()}
-    subs = dict(**values_inaccuracies, **{values_names[k]: Decimal(v) for k, v in consts.items()})
+    values_inaccuracies = {values_names[k]: inaccuracy(
+        v, t)[0] for k, (v, t) in values.items()}
+    subs = dict(**values_inaccuracies, **
+                {values_names[k]: Decimal(v) for k, v in consts.items()})
     fb = Decimal(str(f.subs(subs).evalf()))
     dsb = [Decimal(str(d.subs(subs).evalf())) for d in ds]
 
-    values_inaccuracies_spread = [inaccuracy(v, t)[1] for _k, (v, t) in values.items()]
-    dfb = sum(map(lambda a, b: (a * b) ** 2, dsb, values_inaccuracies_spread)).sqrt()
+    values_inaccuracies_spread = [inaccuracy(
+        v, t)[1] for _k, (v, t) in values.items()]
+    dfb = sum(map(lambda a, b: (a * b) ** 2, dsb,
+              values_inaccuracies_spread)).sqrt()
 
-    
     percent_d = dfb / fb * 100 if fb != 0 else 0
 
     cols = [
@@ -93,7 +100,8 @@ def inacc_trans(fun_name=None, values_names=None, values=None, consts=None, expr
         fr'${lt.b(lt.d(fun_name))} = \sqrt{{' + ' + '.join(
             [df_f % (v, sp.latex(d)) for d, v in zip(ds, vals_n)]) + '}$',
         r'$%s = %s \pm %s$' % (fun_name, lt.b(fun_name), lt.d(lt.b(fun_name))),
-        r'$\delta %s = \frac{%s}{%s}' % (fun_name, lt.d(lt.b(fun_name)), lt.b(fun_name)) + r'\cdot 100\%$'
+        r'$\delta %s = \frac{%s}{%s}' % (fun_name, lt.d(
+            lt.b(fun_name)), lt.b(fun_name)) + r'\cdot 100\%$'
     ]
     vals = [
         r'$%s$' % fmt(fb),
@@ -104,6 +112,95 @@ def inacc_trans(fun_name=None, values_names=None, values=None, consts=None, expr
 
     return pd.DataFrame(zip(cols, vals), columns=FV_COLS) if vertical else \
         pd.DataFrame([[FV_COLS[1], *vals]], columns=[FV_COLS[0], *cols])
+
+
+def inacc_select(fun_name=None, values_names=None, values=None, consts=None, expr='', fmt=lambda x: x, vertical=True):
+
+    def table1(vn, values, thetas, fmt=lambda x: x):
+        N = len(values)
+        v = list(map(Decimal, values))
+        t = list(map(Decimal, thetas))
+        def h(v): return map(fmt, v)
+        hh = fmt
+
+        vals = [
+            [lt.i(vn), *h(v), '-'],
+            [lt.i(r'\theta', i=lt.i(vn)), *h(thetas), '-'],
+            [lt.i(vn) + r'\uparrow', *h(sorted(v)),
+             fr'{lt.i("R", i=vn)} = {lt.i(vn, i="N")} - {lt.i(vn)} = {hh(big_r(v))}'],
+            [fr'U_{{ {vn} i}}', *h(big_u(v)), '-',
+             fr'U_{vn} = U_{{P,N}} R_{vn} = {hh(get_u(v))}']  # TODO
+        ]
+        return pd.DataFrame([['$%s$' % x for x in v] for v in vals],
+                            columns=['№', *map(lambda v: f'${v}$', range(1, N + 1)), '$-$'])
+
+    def table2(vn, values, theta, fmt=lambda x: x, vertical=True):
+        v = list(map(Decimal, values))
+        N = len(values)
+        barx = sum(v) / len(v)
+        t = Decimal(theta)
+        sx = (sum(map(lambda x: (x - barx) ** 2, v)) / (N * (N - 1))).sqrt()
+        dx = get_tpn(N, 95) * sx
+        bar_dx = (dx ** 2 + t ** 2).sqrt()
+        percent_d = bar_dx / barx * 100 if fb != 0 else 0
+
+        h = fmt
+        vals = [
+            r'$%s$' % h(barx),
+            r'$%s$' % h(sx),
+            r'$%s$' % h(dx),
+            r'$%s$' % h(big_r(v)),
+            r'$%s$' % h(get_bpn(N, 95) * big_r(v)),
+            r'$%s$' % h(t),
+            r'$%s$' % h(bar_dx),
+            r'$%s$' % fr'{h(barx)} \pm {h(bar_dx)}',
+            r'$%s$' % h(percent_d)
+        ]
+        cols = [
+            r'$%s = \frac{1}{N} \sum{%s}$' % (lt.b(vn), lt.i(vn)),
+            r'$S_{\bar{%s}} = \sqrt{ \frac{\sum{(%s - %s)^2}} {N(N-1)} }$' % (
+                lt.b(vn), lt.i(vn), lt.b(vn)),
+            r'$%s = t_{P,N} S_{%s}$' % (lt.d(vn), lt.b(vn)),
+            r'$R_{%s} = %s_{max} - %s_{min}$' % (vn, vn, vn),
+            r'$%s = \beta_{P,N} R_{%s}$' % (lt.d(lt.i(vn, i=r'\beta')), vn),
+            r'$%s = \frac{1}{N} \sum{%s}$' % (
+                lt.i(r'\theta', i=vn), lt.i(r'\theta', i=lt.i(vn))),
+            r'$%s = \sqrt{%s ^ 2 + %s ^ 2}$' % (
+                lt.b(lt.d(vn)), lt.d(vn), lt.i(r'\theta', i=vn)),
+            r'$%s = %s \pm %s$' % (vn, lt.b(vn), lt.b(lt.d(vn))),
+            r'$\delta %s = \frac{%s}{%s}' % (
+                vn, lt.d(lt.b(vn)), lt.b(vn)) + r'\cdot 100\%$'
+        ]
+
+        # print('\a')
+        return pd.DataFrame(zip(cols, vals), columns=FV_COLS) if vertical else \
+            pd.DataFrame([[FV_COLS[1], *vals]], columns=[FV_COLS[0], *cols])
+
+    vals_n = list(
+        filter(lambda a: a not in consts.keys(), values_names.keys()))
+    f, ds = derivatives(values_names, expr, vals_n)
+
+    fbs = []
+    dfbs = []
+
+    for i in range(len(list(values.values())[0][0])):
+        values_inaccuracies = {values_names[k]: v[i]
+                               for k, (v, _t) in values.items()}
+        subs = dict(**values_inaccuracies, **
+                    {values_names[k]: Decimal(v) for k, v in consts.items()})
+
+        fb = Decimal(str(f.subs(subs).evalf()))
+        dsb = [Decimal(str(d.subs(subs).evalf())) for d in ds]
+
+        values_inaccuracies_spread = [inaccuracy(
+            v, t)[1] for _k, (v, t) in values.items()]
+        dfb = sum(map(lambda a, b: (a * b) ** 2, dsb,
+                  values_inaccuracies_spread)).sqrt()
+
+        fbs.append(fb)
+        dfbs.append(dfb)
+
+    return table1(fun_name, fbs, dfbs, fmt), table2(fun_name, fbs, sum(dfbs) / len(dfbs), fmt, vertical=vertical)
 
 
 def split_df(df, by):
@@ -129,7 +226,8 @@ if __name__ == '__main__':
     #                           fmt=lambda x: round(x, 4).normalize()), 3), sep='\n')
     print(inacc_trans(
         fun_name=r'\varphi',
-        values_names={'r': r'\rho', 'R': r'R', 'l': r'l', 'e': r'\varepsilon_0'},
+        values_names={'r': r'\rho', 'R': r'R',
+                      'l': r'l', 'e': r'\varepsilon_0'},
         values={'r': (['3.1e-5', '3.2e-5', '3.6e-5', '3.4e-5', '3.2e-5'], '0'),
                 'R': (['202', '203', '206', '208', '206'], '0'),
                 'l': (['108', '109', '110', '112', '110'], '0')},

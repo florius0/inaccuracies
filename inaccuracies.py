@@ -1,5 +1,6 @@
 import click
 import pandas as pd
+from pprint import pprint
 
 import core as ia
 
@@ -73,6 +74,32 @@ def trs(name, values_names, values, expr, rnd=None, exp=None, const=None, all=Fa
 
     t = ia.inacc_trans(fun_name=name, expr=expr, values_names=vn, values=v, consts=const, fmt=fmt)
     print(t.to_latex(**LATEX_KWARGS) if TO_LATEX else t)
+
+@main.command()
+@click.option('--name', '-n', required=True)
+@click.option('--values_names', '-vn', required=True)
+@click.option('--values', '-v', required=True)
+@click.option('--expr', '-ex', required=True)
+@click.option('--const', '-c')
+@click.option('--exp', '-e', default=None, type=int)
+@click.option('--rnd', '-r', default=None, type=int)
+@click.option('--all', '-a', default=False, type=bool, is_flag=True)
+def sel(name, values_names, values, expr, rnd=None, exp=None, const=None, all=False):
+    pd.options.display.max_colwidth = 10 ** 6
+    fmt = get_fmt(rnd, exp)
+
+    const = {} if const is None else parse_dict(const)
+    vn = parse_dict(values_names)
+    v = {k: (v.split(',')[:-1], v.split(',')[-1]) for k, v in parse_dict(values).items()}
+
+    if all:
+        for varname, (vals, t) in v.items():
+            _fwd(vn[varname], ' '.join(vals), t, rnd=rnd, exp=exp)
+
+    tables = ia.inacc_select(fun_name=name, expr=expr, values_names=vn, values=v, consts=const, fmt=fmt)
+
+    for t in tables:
+        print(t.to_latex(**LATEX_KWARGS) if TO_LATEX else t)
 
 
 if __name__ == '__main__':
